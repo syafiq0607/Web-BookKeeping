@@ -42,4 +42,4 @@ Never commit `.env`. It is ignored by Git; use `.env.example` as the safe config
 
 Import the repository into Vercel with the Framework Preset set to `Other`. Leave Build Command and Output Directory empty. The `api/[...path].js` function exposes the existing `/api/*` routes, while the files in `public/` are served as the frontend.
 
-Add `DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and a long random `SESSION_SECRET` as Vercel environment variables. Add `VIEWER_USERNAME` and `VIEWER_PASSWORD` only when viewer access is needed. Do not add `PORT`; Vercel assigns it automatically. `SESSION_SECRET` must be the same across serverless invocations so login remains valid when requests reach different instances.
+Add `DATABASE_URL`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD` as Vercel environment variables. `SESSION_SECRET` is optional but recommended; when omitted, the application derives a stable signing key from `ADMIN_PASSWORD`. Add `VIEWER_USERNAME` and `VIEWER_PASSWORD` only when viewer access is needed. Do not add `PORT`; Vercel assigns it automatically. After deployment, `/api/health` reports whether Neon is connected without exposing connection details.

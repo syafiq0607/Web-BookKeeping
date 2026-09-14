@@ -11,7 +11,7 @@ const adminUsername = String(process.env.ADMIN_USERNAME || "").trim();
 const adminPassword = String(process.env.ADMIN_PASSWORD || "");
 const viewerUsername = String(process.env.VIEWER_USERNAME || "").trim();
 const viewerPassword = String(process.env.VIEWER_PASSWORD || "");
-const sessionSecret = String(process.env.SESSION_SECRET || "");
+const sessionSecret = String(process.env.SESSION_SECRET || "") || (adminPassword ? createHmac("sha256", adminPassword).update("bookkeeping-session-v1").digest("hex") : "");
 const accounts = [];
 if (adminUsername && adminPassword) accounts.push({ username: adminUsername, password: adminPassword, name: "Administrator", email: "admin@localhost", role: "ADMIN" });
 if (viewerUsername && viewerPassword) accounts.push({ username: viewerUsername, password: viewerPassword, name: "Viewer", email: "viewer@localhost", role: "VIEWER" });
@@ -88,7 +88,9 @@ async function ensureDatabase() {
 }
 
 function databaseRequired() {
-  return pool ? null : "Database is not configured. Set DATABASE_URL in .env and restart the server.";
+  if (!pool) return "Database is not configured. Set DATABASE_URL in the deployment environment.";
+  if (databaseStartupError) return "Database connection is unavailable. Check the Neon DATABASE_URL and deployment network settings.";
+  return null;
 }
 
 async function getTransactions() {
@@ -131,6 +133,9 @@ async function requestHandler(req, res) {
   await databaseReady;
   if (req.url.startsWith("/api/")) {
     try {
+      if (req.method === "GET" && req.url.split("?")[0] === "/api/health") {
+        return json(res, 200, { database: databaseRequired() ? "unavailable" : "connected" });
+      }
       if (req.method === "POST" && req.url.split("?")[0] === "/api/login") {
         const input = await body(req);
         const account = accounts.find((candidate) => candidate.username === input.username && candidate.password === input.password);
@@ -235,8 +240,10 @@ async function requestHandler(req, res) {
 
 const port = Number(process.env.PORT) || 3000;
 if (!adminUsername || !adminPassword) console.warn("ADMIN_USERNAME and ADMIN_PASSWORD are not configured; administrator login is disabled.");
-if (!sessionSecret) console.warn("SESSION_SECRET is not configured; login is disabled.");
+if (!process.env.SESSION_SECRET && adminPassword) console.warn("SESSION_SECRET is not configured; deriving a deployment-stable session key from ADMIN_PASSWORD.");
+let databaseStartupError = null;
 const databaseReady = ensureDatabase().catch((error) => {
+  databaseStartupError = error;
   console.error(`Database startup failed: ${error.message}`);
 });
 
