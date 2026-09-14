@@ -395,7 +395,9 @@ document.querySelector("#login-form").addEventListener("submit", async (event) =
   error.textContent = "";
   try {
     const response = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: document.querySelector("#login-username").value.trim(), password: document.querySelector("#login-password").value }) });
-    const result = await response.json();
+    const result = (response.headers.get("content-type") || "").includes("application/json")
+      ? await response.json()
+      : { error: `Login service returned an unexpected response (HTTP ${response.status})` };
     if (!response.ok) throw new Error(result.error || "Unable to sign in");
     showWorkspace(result.user, result.token);
   } catch (loginError) {

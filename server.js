@@ -110,7 +110,8 @@ function serveFile(req, res) {
   });
 }
 
-const server = http.createServer(async (req, res) => {
+async function requestHandler(req, res) {
+  await databaseReady;
   if (req.url.startsWith("/api/")) {
     try {
       if (req.method === "POST" && req.url.split("?")[0] === "/api/login") {
@@ -213,13 +214,17 @@ const server = http.createServer(async (req, res) => {
     }
   }
   serveFile(req, res);
-});
+}
 
 const port = Number(process.env.PORT) || 3000;
 if (!adminUsername || !adminPassword) console.warn("ADMIN_USERNAME and ADMIN_PASSWORD are not configured; administrator login is disabled.");
-ensureDatabase()
-  .then(() => server.listen(port, () => console.log(`BookKeeping running at http://localhost:${port}`)))
-  .catch((error) => {
-    console.error(`Database startup failed: ${error.message}`);
-    server.listen(port, () => console.log(`BookKeeping running at http://localhost:${port} (database unavailable)`));
-  });
+const databaseReady = ensureDatabase().catch((error) => {
+  console.error(`Database startup failed: ${error.message}`);
+});
+
+if (require.main === module) {
+  const server = http.createServer(requestHandler);
+  databaseReady.then(() => server.listen(port, () => console.log(`BookKeeping running at http://localhost:${port}`)));
+}
+
+module.exports = requestHandler;

@@ -37,3 +37,9 @@ Viewer access is optional. Set `VIEWER_USERNAME` and `VIEWER_PASSWORD` in `.env`
 Sessions are stored in browser local storage for this MVP. Production authentication should replace this with secure, persisted sessions or short-lived access tokens.
 
 Never commit `.env`. It is ignored by Git; use `.env.example` as the safe configuration template.
+
+## Deploying to Vercel
+
+Import the repository into Vercel with the Framework Preset set to `Other`. Leave Build Command and Output Directory empty. The `api/[...path].js` function exposes the existing `/api/*` routes, while the files in `public/` are served as the frontend.
+
+Add `DATABASE_URL`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD` as Vercel environment variables. Add `VIEWER_USERNAME` and `VIEWER_PASSWORD` only when viewer access is needed. Do not add `PORT`; Vercel assigns it automatically.
