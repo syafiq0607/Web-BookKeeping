@@ -1,7 +1,7 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
-const { randomUUID } = require("node:crypto");
+const { randomUUID, createHmac, timingSafeEqual } = require("node:crypto");
 require("dotenv").config();
 const { Pool } = require("pg");
 
@@ -11,10 +11,10 @@ const adminUsername = String(process.env.ADMIN_USERNAME || "").trim();
 const adminPassword = String(process.env.ADMIN_PASSWORD || "");
 const viewerUsername = String(process.env.VIEWER_USERNAME || "").trim();
 const viewerPassword = String(process.env.VIEWER_PASSWORD || "");
+const sessionSecret = String(process.env.SESSION_SECRET || "");
 const accounts = [];
 if (adminUsername && adminPassword) accounts.push({ username: adminUsername, password: adminPassword, name: "Administrator", email: "admin@localhost", role: "ADMIN" });
 if (viewerUsername && viewerPassword) accounts.push({ username: viewerUsername, password: viewerPassword, name: "Viewer", email: "viewer@localhost", role: "VIEWER" });
-const sessions = new Map();
 const seedTransactions = [
   { id: "tx-1001", date: "2026-09-14", description: "Client retainer", category: "Sales", amount: 12500000, type: "INCOME", source: "WEB", user: "Aisha Rahman" },
   { id: "tx-1002", date: "2026-09-13", description: "Cloud infrastructure", category: "Operations", amount: 1850000, type: "EXPENSE", source: "TELEGRAM", user: "Rizky Pratama" },
@@ -41,7 +41,24 @@ function json(res, status, body) {
 
 function authenticated(req) {
   const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-  return sessions.get(token);
+  if (!sessionSecret || !token) return null;
+  const [encodedPayload, signature] = token.split(".");
+  if (!encodedPayload || !signature) return null;
+  const expected = createHmac("sha256", sessionSecret).update(encodedPayload).digest("base64url");
+  if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+    if (!payload.username || payload.expiresAt < Date.now()) return null;
+    return accounts.find((account) => account.username === payload.username) || null;
+  } catch {
+    return null;
+  }
+}
+
+function createSession(account) {
+  const payload = Buffer.from(JSON.stringify({ username: account.username, expiresAt: Date.now() + 8 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = createHmac("sha256", sessionSecret).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
 }
 
 async function ensureDatabase() {
@@ -118,8 +135,8 @@ async function requestHandler(req, res) {
         const input = await body(req);
         const account = accounts.find((candidate) => candidate.username === input.username && candidate.password === input.password);
         if (!account) return json(res, 401, { error: "Invalid username or password" });
-        const token = randomUUID();
-        sessions.set(token, account);
+        if (!sessionSecret) return json(res, 503, { error: "SESSION_SECRET is not configured" });
+        const token = createSession(account);
         return json(res, 200, { token, user: { name: account.name, email: account.email, role: account.role, username: account.username } });
       }
       const session = authenticated(req);
@@ -218,6 +235,7 @@ async function requestHandler(req, res) {
 
 const port = Number(process.env.PORT) || 3000;
 if (!adminUsername || !adminPassword) console.warn("ADMIN_USERNAME and ADMIN_PASSWORD are not configured; administrator login is disabled.");
+if (!sessionSecret) console.warn("SESSION_SECRET is not configured; login is disabled.");
 const databaseReady = ensureDatabase().catch((error) => {
   console.error(`Database startup failed: ${error.message}`);
 });
