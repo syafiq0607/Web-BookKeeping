@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BookKeeping</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <section class="login-screen" id="login-screen">
+    <div class="login-card">
+      <div class="brand-mark login-mark">+</div>
+      <span class="eyebrow">PRECISION LEDGER</span>
+      <h1>Welcome back</h1>
+      <p class="subtle">Sign in to manage your financial operations.</p>
+      <form id="login-form">
+        <label>Username<input id="login-username" autocomplete="username" required></label>
+        <label>Password<input id="login-password" type="password" autocomplete="current-password" required></label>
+        <button class="button login-button" type="submit">Sign in</button>
+        <p class="login-error" id="login-error" role="alert"></p>
+      </form>
+    </div>
+  </section>
+  <aside class="sidebar" id="sidebar">
+    <div>
+      <div class="brand"><div class="brand-mark">+</div><div class="brand-copy"><strong>BookKeeping</strong></div><button id="collapse" aria-label="Collapse sidebar">‹</button></div>
+      <nav id="nav">
+        <button class="nav-item active" data-view="overview"><span>⌂</span><b>Overview</b></button>
+        <button class="nav-item" data-view="cashflow"><span>▤</span><b>Cashflow</b></button>
+        <button class="nav-item" data-view="bots"><span>⌘</span><b>Bots</b></button>
+        <button class="nav-item" data-view="categories"><span>◈</span><b>Categories</b></button>
+        <button class="nav-item" data-view="users"><span>♙</span><b>Users</b></button>
+      </nav>
+    </div>
+    <div class="sidebar-footer"><span class="pulse"></span><span class="sidebar-label">PostgreSQL connected</span><small>38ms</small></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div><span class="eyebrow">WORKSPACE / PRECISION LEDGER</span><h1 id="page-title">Executive overview</h1></div><div class="top-actions"><button class="icon-button" id="global-search" aria-label="Search workspace">⌕</button><button class="icon-button" id="theme-toggle" aria-label="Toggle contrast">◔</button><button class="avatar" id="profile-button" aria-label="Open profile">AR</button><div class="profile-menu" id="profile-menu"><strong id="profile-name"></strong><span id="profile-email"></span><span class="profile-role" id="profile-role"></span><button class="logout-button" id="logout-button">Log out</button></div></div></header>
+    <section id="app" class="content"></section>
+  </main>
+  <div id="toast" class="toast"></div>
+  <div class="modal-backdrop" id="modal-backdrop">
+    <form class="modal-card" id="action-form">
+      <button class="modal-close" id="modal-close" type="button" aria-label="Close form">×</button>
+      <span class="eyebrow" id="modal-eyebrow">WORKSPACE ACTION</span>
+      <h2 id="modal-title"></h2>
+      <div id="modal-fields"></div>
+      <p class="login-error" id="modal-error" role="alert"></p>
+      <button class="button" id="modal-submit" type="submit"></button>
+    </form>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
