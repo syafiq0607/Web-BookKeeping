@@ -208,6 +208,18 @@ async function requestHandler(req, res) {
         categories.add(name);
         return json(res, 201, { name });
       }
+      const categoryDeleteMatch = req.url.split("?")[0].match(/^\/api\/categories\/([^/]+)\/?$/);
+      if (req.method === "DELETE" && categoryDeleteMatch) {
+        if (session.role !== "ADMIN") return json(res, 403, { error: "Admin access is required for this action" });
+        const name = decodeURIComponent(categoryDeleteMatch[1]);
+        if (!categories.has(name)) return json(res, 404, { error: "Category not found" });
+        const databaseError = databaseRequired();
+        if (databaseError) return json(res, 503, { error: databaseError });
+        const usage = await pool.query("SELECT COUNT(*)::int AS count FROM transactions WHERE category = $1", [name]);
+        if (usage.rows[0].count > 0) return json(res, 409, { error: "Category is used by existing transactions and cannot be deleted" });
+        categories.delete(name);
+        return json(res, 200, { deleted: name });
+      }
       if (req.method === "POST" && req.url.split("?")[0] === "/api/users") {
         if (session.role !== "ADMIN") return json(res, 403, { error: "Admin access is required for this action" });
         const input = await body(req);

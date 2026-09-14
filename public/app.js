@@ -151,7 +151,7 @@ function usersView() {
 
 function categories() {
   const counts = state.categories.map((category) => ({ category, count: state.transactions.filter((t) => t.category === category).length }));
-  return shell("Categories", "Classify every transaction consistently across web and bot channels.", `<div class="metrics">${counts.map((c) => `<div class="card category-card"><span class="metric-label">CATEGORY</span><div class="metric-value">${c.category}</div><span class="metric-trend">${c.count} transactions</span></div>`).join("")}</div>`, adminAction("add-category", "+ Add category"));
+  return shell("Categories", "Classify every transaction consistently across web and bot channels.", `<div class="metrics">${counts.map((c) => `<div class="card category-card"><span class="metric-label">CATEGORY</span><div class="metric-value">${c.category}</div><span class="metric-trend">${c.count} transactions</span>${isAdmin() ? `<button class="row-action category-action" data-action="category-menu" data-category="${encodeURIComponent(c.category)}" aria-label="Open category actions">•••</button>` : ""}</div>`).join("")}</div>`, adminAction("add-category", "+ Add category"));
 }
 
 function render(view) {
@@ -280,6 +280,21 @@ function showUserDetails(userId) {
   document.querySelector("#modal-backdrop").classList.add("open");
 }
 
+function showCategoryDetails(categoryName) {
+  const category = decodeURIComponent(categoryName);
+  const count = state.transactions.filter((transaction) => transaction.category === category).length;
+  const fields = document.querySelector("#modal-fields");
+  document.querySelector("#modal-title").textContent = "Category information";
+  document.querySelector("#modal-submit").textContent = "Delete category";
+  document.querySelector("#modal-submit").classList.add("danger-button");
+  document.querySelector("#modal-error").textContent = "";
+  fields.innerHTML = `<div class="user-detail-list"><div><span>Category</span><b>${category}</b></div><div><span>Transactions</span><b>${count}</b></div></div>`;
+  const form = document.querySelector("#action-form");
+  form.dataset.kind = "category-details";
+  form.dataset.category = category;
+  document.querySelector("#modal-backdrop").classList.add("open");
+}
+
 async function submitModal(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -307,6 +322,18 @@ async function submitModal(event) {
     await load();
     render("users");
     return showToast("User deleted");
+  }
+  if (kind === "category-details") {
+    const category = form.dataset.category;
+    if (!category) return showToast("Category not found");
+    if (!confirm(`Delete ${category}? Categories with transactions cannot be deleted.`)) return;
+    const response = await apiFetch(`categories/${encodeURIComponent(category)}`, { method: "DELETE" });
+    const result = await response.json();
+    if (!response.ok) return (document.querySelector("#modal-error").textContent = result.error || "Could not delete category");
+    closeModal();
+    await load();
+    render("categories");
+    return showToast("Category deleted");
   }
   const payload = Object.fromEntries(new FormData(form).entries());
   if (kind === "transaction") payload.amount = Number(String(payload.amount).replace(/\D/g, ""));
@@ -380,6 +407,7 @@ function handleAction(action, element) {
   if (action === "invite-user") { if (!isAdmin()) return showToast("Admin access is required"); return openModal("user"); }
   if (action === "add-category") { if (!isAdmin()) return showToast("Admin access is required"); return openModal("category"); }
   if (action === "user-menu") return showUserDetails(element.dataset.userId);
+  if (action === "category-menu") return showCategoryDetails(element.dataset.category);
   if (action === "connect-bot") {
     if (!isAdmin()) return showToast("Admin access is required");
     openModal("bot");
