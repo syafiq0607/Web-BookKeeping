@@ -14,7 +14,13 @@ function isAdmin() {
 
 function apiFetch(resource, options = {}) {
   const headers = { ...(options.headers || {}), Authorization: `Bearer ${state.token}` };
-  return fetch(`/api/${resource}`, { ...options, headers });
+  return fetch(`/api/${resource}`, { ...options, headers }).then((response) => {
+    if (response.status === 401 && state.token) {
+      showLogin();
+      showToast("Your session expired. Please sign in again.");
+    }
+    return response;
+  });
 }
 
 async function load() {
@@ -24,7 +30,10 @@ async function load() {
 
 async function refreshData() {
   const [dashboard, transactions, users, bots, categories] = await Promise.all(["dashboard", "transactions", "users", "bots", "categories"].map((resource) => apiFetch(resource).then(async (response) => {
-    if (!response.ok) throw new Error("Could not load workspace data");
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.error || "Could not load workspace data");
+    }
     return response.json();
   })));
   Object.assign(state, { dashboard, transactions, users, bots, categories });
